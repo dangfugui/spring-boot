@@ -1,12 +1,13 @@
-package dang.note.spring.boot.boottask;
+package dang.note.spring.boot.task;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+
 @SpringBootApplication
-public class BootTaskApplication {
+public class TaskApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BootTaskApplication.class, args);
+        SpringApplication.run(TaskApplication.class, args);
     }
 }

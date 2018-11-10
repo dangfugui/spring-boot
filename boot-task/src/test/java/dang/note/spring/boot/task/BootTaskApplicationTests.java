@@ -1,4 +1,4 @@
-package dang.note.spring.boot.boottask;
+package dang.note.spring.boot.task;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
