@@ -11,7 +11,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Component
+//@Component
 @Slf4j
 public class GuavaRunner implements ApplicationRunner {
     // 定长线程池

@@ -19,4 +19,13 @@ public class DemoController {
         String res = demoService.echo(echo);
         return res;
     }
+
+    @RequestMapping("/log")
+    public String log(String message) {
+        log.debug(message);
+        log.info(message);
+        log.warn(message);
+        log.error(message);
+        return message;
+    }
 }
