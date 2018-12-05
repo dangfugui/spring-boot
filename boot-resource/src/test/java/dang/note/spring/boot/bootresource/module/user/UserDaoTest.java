@@ -24,5 +24,7 @@ public class UserDaoTest extends IntegrationBaseTest {
     @Test
     public void updateRealNameById() {
         userDao.updateRealNameById(1L, "hehe");
+        User user = userDao.getOne(1L);
+        Assert.assertEquals("hehe", user.getRealName());
     }
 }
