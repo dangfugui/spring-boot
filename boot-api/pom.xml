@@ -38,8 +38,8 @@
     </dependencies>
 
     <build>
-        <plugins> <!-- 插件 打包成 带依赖的 -jar 包 -->
-            <plugin>
+        <plugins>
+            <plugin>    <!-- 插件 打包成 带依赖的 -jar 包 -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
