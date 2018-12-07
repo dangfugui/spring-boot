@@ -6,10 +6,18 @@ import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Resource;
 
+import com.alibaba.fastjson.parser.ParserConfig;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.alibaba.fastjson.support.config.FastJsonConfig;
+import com.alibaba.fastjson.support.spring.FastJsonRedisSerializer;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.cache.interceptor.KeyGenerator;
+import org.springframework.cache.interceptor.SimpleCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheManager;
@@ -67,29 +75,65 @@ public class RedisConfig extends CachingConfigurerSupport {
     }
 
 
+
     /**
      * RedisTemplate配置
      */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(LettuceConnectionFactory lettuceConnectionFactory) {
         // 设置序列化
-        Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<Object>(
-                Object.class);
-        ObjectMapper om = new ObjectMapper();
-        om.setVisibility(PropertyAccessor.ALL, Visibility.ANY);
-        om.enableDefaultTyping(DefaultTyping.NON_FINAL);
-        jackson2JsonRedisSerializer.setObjectMapper(om);
+        RedisSerializer<Object> redisSerializer = jackson2JsonRedisSerializer();
         // 配置redisTemplate
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<String, Object>();
         redisTemplate.setConnectionFactory(lettuceConnectionFactory);
         RedisSerializer<?> stringSerializer = new StringRedisSerializer();
         redisTemplate.setKeySerializer(stringSerializer);// key序列化
-        redisTemplate.setValueSerializer(jackson2JsonRedisSerializer);// value序列化
+        redisTemplate.setValueSerializer(redisSerializer);// value序列化
         redisTemplate.setHashKeySerializer(stringSerializer);// Hash key序列化
-        redisTemplate.setHashValueSerializer(jackson2JsonRedisSerializer);// Hash value序列化
+        redisTemplate.setHashValueSerializer(redisSerializer);// Hash value序列化
         redisTemplate.afterPropertiesSet();
         return redisTemplate;
     }
 
+
+    private RedisSerializer<Object> fastJsonRedisSerializer() {
+        ParserConfig.getGlobalInstance().addAccept("dang.note");
+        FastJsonConfig fastJsonConfig = new FastJsonConfig();
+        fastJsonConfig.setSerializerFeatures(
+                SerializerFeature.WriteNullListAsEmpty,
+                SerializerFeature.WriteDateUseDateFormat,
+                SerializerFeature.WriteEnumUsingToString,
+                SerializerFeature.WriteClassName);
+        FastJsonRedisSerializer<Object> fastJsonRedisSerializer = new FastJsonRedisSerializer<>(Object.class);
+        fastJsonRedisSerializer.setFastJsonConfig(fastJsonConfig);
+        return fastJsonRedisSerializer;
+    }
+
+
+    private RedisSerializer<Object> jackson2JsonRedisSerializer() {
+        // 设置序列化
+        Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<Object>(
+                Object.class);
+        ObjectMapper om = new ObjectMapper();
+        om.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+        om.enableDefaultTyping(DefaultTyping.NON_FINAL);
+        jackson2JsonRedisSerializer.setObjectMapper(om);
+        return jackson2JsonRedisSerializer;
+
+    }
+
+
+    @Slf4j
+    private static class RelaxedCacheErrorHandler extends SimpleCacheErrorHandler {
+        @Override
+        public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
+            log.error("Error getting from cache.", exception);
+        }
+    }
+
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new RelaxedCacheErrorHandler();
+    }
 
 }

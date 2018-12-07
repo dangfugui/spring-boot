@@ -10,7 +10,7 @@ import java.io.Serializable;
 @Entity
 @Data
 @ToString
-public class User {
+public class User implements Serializable {
 
     @Id
     private Long id;    // ID自增长主键
