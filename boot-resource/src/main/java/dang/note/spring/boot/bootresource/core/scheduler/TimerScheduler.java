@@ -1,20 +1,16 @@
 package dang.note.spring.boot.bootresource.core.scheduler;
 
 
-import com.alibaba.fastjson.JSON;
 import dang.note.spring.boot.bootresource.module.user.User;
 import dang.note.spring.boot.bootresource.module.user.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import javax.transaction.Transactional;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -36,10 +32,13 @@ public class TimerScheduler {
     public void health() {
         User user = userService.getById(1L);
         log.info("count:{} DBUser:{}", count++, user.toString());
-        redisTemplate.opsForValue().set("redis:user", user, 1, TimeUnit.HOURS);
-        user = redisTemplate.opsForValue().get("redis:user");
-        log.info("count:{} RedisUser:{}", count++, user);
+        try {
+            redisTemplate.opsForValue().set("redis:user", user, 1, TimeUnit.HOURS);
+            user = redisTemplate.opsForValue().get("redis:user");
+            log.info("count:{} RedisUser:{}", count++, user);
+        } catch (Exception e) {
+            log.error("redis cache", e);
+        }
     }
-
     private long count = 0;
 }

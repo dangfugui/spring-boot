@@ -1,38 +1,28 @@
 package dang.note.spring.boot.bootresource.core.redis;
 
-import com.alibaba.fastjson.parser.ParserConfig;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.alibaba.fastjson.support.config.FastJsonConfig;
-import com.alibaba.fastjson.support.spring.FastJsonRedisSerializer;
+
+import java.lang.reflect.Method;
+import java.time.Duration;
+import javax.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.lettuce.LettuceConnection;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import javax.annotation.Resource;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-@Slf4j
-//@Configuration
-//@EnableCaching // 开启缓存支持
+@Configuration
+@EnableCaching // 开启缓存支持
 public class RedisCacheConfig extends CachingConfigurerSupport {
 
 
@@ -59,17 +49,54 @@ public class RedisCacheConfig extends CachingConfigurerSupport {
 
     // 缓存管理器
     @Bean
-    @Override
     public CacheManager cacheManager() {
-        RedisCacheManager.RedisCacheManagerBuilder builder = RedisCacheManager.RedisCacheManagerBuilder
-                .fromConnectionFactory(lettuceConnectionFactory);
-        @SuppressWarnings("serial")
-        Set<String> cacheNames = new HashSet<String>() {
-            {
-                add("codeNameCache");
-            }
-        };
-        builder.initialCacheNames(cacheNames);
-        return builder.build();
+        RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+        // 配置序列化（解决乱码的问题）
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofHours(1))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(redisSerializer))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(
+                        RedisConfig.jackson2JsonRedisSerializer()))
+                .disableCachingNullValues();
+        RedisCacheManager cacheManager = RedisCacheManager.builder(lettuceConnectionFactory)
+                .cacheDefaults(config)
+                .build();
+        return cacheManager;
+
     }
+
+
+    /**
+     * 缓存报错只打log 不抛异常 让请求继续处理
+     */
+    @Slf4j
+    private static class RelaxedCacheErrorHandler implements CacheErrorHandler {
+        @Override
+        public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
+            log.error("Error getting from cache.", exception);
+        }
+
+        @Override
+        public void handleCachePutError(RuntimeException e, Cache cache, Object o, Object o1) {
+            log.error("Error put to cache.", e);
+        }
+
+        @Override
+        public void handleCacheEvictError(RuntimeException e, Cache cache, Object o) {
+            log.error("Error evict to cache.", e);
+        }
+
+        @Override
+        public void handleCacheClearError(RuntimeException e, Cache cache) {
+            log.error("Error clear cache.", e);
+        }
+    }
+
+
+    @Bean
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new RelaxedCacheErrorHandler();
+    }
+
 }

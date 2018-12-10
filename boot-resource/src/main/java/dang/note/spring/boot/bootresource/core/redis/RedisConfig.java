@@ -1,26 +1,13 @@
 package dang.note.spring.boot.bootresource.core.redis;
 
 
-import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Set;
-import javax.annotation.Resource;
 
 import com.alibaba.fastjson.parser.ParserConfig;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.alibaba.fastjson.support.config.FastJsonConfig;
 import com.alibaba.fastjson.support.spring.FastJsonRedisSerializer;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CachingConfigurerSupport;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.interceptor.CacheErrorHandler;
-import org.springframework.cache.interceptor.KeyGenerator;
-import org.springframework.cache.interceptor.SimpleCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
@@ -34,46 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
 
 @Configuration
-@EnableCaching // 开启缓存支持
-public class RedisConfig extends CachingConfigurerSupport {
-
-
-    @Resource
-    private LettuceConnectionFactory lettuceConnectionFactory;
-
-
-    @Bean
-    public KeyGenerator keyGenerator() {
-        return new KeyGenerator() {
-            @Override
-            public Object generate(Object target, Method method, Object... params) {
-                StringBuffer sb = new StringBuffer();
-                sb.append(target.getClass().getName());
-                sb.append(method.getName());
-                for (Object obj : params) {
-                    sb.append(obj.toString());
-                }
-                return sb.toString();
-            }
-        };
-    }
-
-
-    // 缓存管理器
-    @Bean
-    public CacheManager cacheManager() {
-        RedisCacheManager.RedisCacheManagerBuilder builder = RedisCacheManager.RedisCacheManagerBuilder
-                .fromConnectionFactory(lettuceConnectionFactory);
-        @SuppressWarnings("serial")
-        Set<String> cacheNames = new HashSet<String>() {
-            {
-                add("codeNameCache");
-            }
-        };
-        builder.initialCacheNames(cacheNames);
-        return builder.build();
-    }
-
+public class RedisConfig {
 
 
     /**
@@ -87,16 +35,19 @@ public class RedisConfig extends CachingConfigurerSupport {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<String, Object>();
         redisTemplate.setConnectionFactory(lettuceConnectionFactory);
         RedisSerializer<?> stringSerializer = new StringRedisSerializer();
-        redisTemplate.setKeySerializer(stringSerializer);// key序列化
-        redisTemplate.setValueSerializer(redisSerializer);// value序列化
-        redisTemplate.setHashKeySerializer(stringSerializer);// Hash key序列化
-        redisTemplate.setHashValueSerializer(redisSerializer);// Hash value序列化
+        redisTemplate.setKeySerializer(stringSerializer);       // key序列化
+        redisTemplate.setValueSerializer(redisSerializer);      // value序列化
+        redisTemplate.setHashKeySerializer(stringSerializer);   // Hash key序列化
+        redisTemplate.setHashValueSerializer(redisSerializer);  // Hash value序列化
         redisTemplate.afterPropertiesSet();
         return redisTemplate;
     }
 
 
-    private RedisSerializer<Object> fastJsonRedisSerializer() {
+    public static RedisSerializer<Object> fastJsonRedisSerializer() {
+        // 全局开启AutoType，不建议使用
+        // ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
+        // 建议使用这种方式，小范围指定白名单
         ParserConfig.getGlobalInstance().addAccept("dang.note");
         FastJsonConfig fastJsonConfig = new FastJsonConfig();
         fastJsonConfig.setSerializerFeatures(
@@ -110,7 +61,7 @@ public class RedisConfig extends CachingConfigurerSupport {
     }
 
 
-    private RedisSerializer<Object> jackson2JsonRedisSerializer() {
+    public static RedisSerializer<Object> jackson2JsonRedisSerializer() {
         // 设置序列化
         Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<Object>(
                 Object.class);
@@ -120,20 +71,6 @@ public class RedisConfig extends CachingConfigurerSupport {
         jackson2JsonRedisSerializer.setObjectMapper(om);
         return jackson2JsonRedisSerializer;
 
-    }
-
-
-    @Slf4j
-    private static class RelaxedCacheErrorHandler extends SimpleCacheErrorHandler {
-        @Override
-        public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-            log.error("Error getting from cache.", exception);
-        }
-    }
-
-    @Override
-    public CacheErrorHandler errorHandler() {
-        return new RelaxedCacheErrorHandler();
     }
 
 }

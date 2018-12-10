@@ -26,5 +26,4 @@ public class User implements Serializable {
 
     @Column
     private Boolean gender;     // 性别
-
 }
